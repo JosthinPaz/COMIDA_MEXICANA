@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import os  #
 
 # --- Nueva configuración: Leer variables de entorno ---
 DB_USER = os.getenv("DB_USER", "root")          # Usamos 'root' como fallback, aunque en CI es vacío
