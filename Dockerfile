@@ -1,12 +1,18 @@
 # Usar una imagen base de Python oficial y ligera
 FROM python:3.11-slim
 
-# Instalar dependencias del sistema necesarias para compilar el conector MariaDB
+# Instalar dependencias del sistema necesarias (MariaDB y Cairo)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        # Dependencias de MariaDB/MySQL
         default-libmysqlclient-dev \
         gcc \
-        pkg-config && \
+        pkg-config \
+        # Nuevas dependencias de Cairo y FreeType (para pycairo y ReportLab)
+        libcairo2-dev \
+        libfreetype6-dev \
+        # Paquetes de desarrollo general que podrían ser útiles
+        build-essential && \
     rm -rf /var/lib/apt/lists/*
 
 # Establecer el directorio de trabajo dentro del contenedor
