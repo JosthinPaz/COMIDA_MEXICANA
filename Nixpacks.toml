@@ -1,15 +1,4 @@
-# 1. Fuerza el lenguaje a Python, ya que la detección automática falló por la estructura monorepo.
 providers = ["python"]
 
 [setup]
-# 2. Establece el directorio de trabajo para todas las operaciones (build, start).
-working_dir = "BACKEND" 
-
-[phases]
-# 3. Este comando de instalación ahora se ejecutará dentro de la carpeta 'BACKEND'.
-#    Ya no necesitamos la ruta 'BACKEND/requirements.txt' porque el working_dir ya apunta ahí.
-install = "pip install -r requirements.txt" 
-
-[start]
-# 4. Define el comando que se ejecutará una vez que el build sea exitoso.
-cmd = "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+working_dir = "BACKEND"
