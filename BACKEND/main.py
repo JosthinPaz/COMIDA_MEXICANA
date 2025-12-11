@@ -85,7 +85,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 # --- Configuración del middleware de CORS (SEGURIDAD) ---
 # Obtener orígenes permitidos desde variable de entorno
 allowed_origins_str = os.getenv(
-    "ALLOWED_ORIGINS", 
+    "ALLOWED_ORIGINS",  
     "http://localhost:5173,http://localhost:3000"
 )
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
@@ -144,3 +144,11 @@ app.include_router(pago_router)
 app.include_router(ventas_router)
 app.include_router(bot_router)
 app.include_router(bot_admin_router)
+
+# --- RUTA RAÍZ AÑADIDA PARA VISIBILIDAD DE DOCUMENTACIÓN ---
+# Esta ruta asegura que la API tenga una respuesta simple en la raíz
+# y ayuda a FastAPI/Swagger a cargar correctamente el esquema de documentación.
+@app.get("/", tags=["Healthcheck"])
+async def root():
+    """Confirma que el servidor está activo y funcionando."""
+    return {"message": "JOSNISHOP API is running!", "status": "online"}
