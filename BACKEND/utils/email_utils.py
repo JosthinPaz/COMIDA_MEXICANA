@@ -3,19 +3,13 @@ import smtplib
 from email.message import EmailMessage
 from datetime import datetime
 from pathlib import Path
-import base64 # Añadido aquí para usar en _send_via_sendgrid sin importar dentro de la función
-
-# Intentar importar SendGrid
-try:
-    from sendgrid import SendGridAPIClient
-    # Aseguramos que todas las clases de SendGrid necesarias estén disponibles
-    from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
-    _HAS_SENDGRID = True
-except ImportError:
-    _HAS_SENDGRID = False
+# No es necesario base64 ni sendgrid imports
+# import base64 
+# try: ... except ImportError: ...
+# _HAS_SENDGRID = False # Eliminado
 
 # =========================================================================
-# 1. PLANTILLA HTML (MOVIDA AL INICIO PARA EVITAR 'name is not defined')
+# 1. PLANTILLA HTML
 # =========================================================================
 
 # Reusable HTML email template. The left colored stripe is red (#d32f2f).
@@ -58,7 +52,7 @@ HTML_EMAIL_TEMPLATE = """<!doctype html>
 
 
 # =========================================================================
-# 2. UTILITIES DE BAJO NIVEL
+# 2. UTILITIES DE BAJO NIVEL (Solo SMTP)
 # =========================================================================
 
 def _send_message_smtp(remitente, username, password, smtp_server, smtp_port, msg):
@@ -67,6 +61,7 @@ def _send_message_smtp(remitente, username, password, smtp_server, smtp_port, ms
     """
     # Try SSL (commonly port 465)
     try:
+        # Nota: Usamos smtp_port que debe ser 465 para SSL
         with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=20) as server:
             if username:
                 server.login(username, password)
@@ -90,53 +85,12 @@ def _send_message_smtp(remitente, username, password, smtp_server, smtp_port, ms
             server.send_message(msg)
         return True
     except Exception as e_tls:
+        # Si fallan ambos, se imprime el error de STARTTLS y retorna False
         print(f"[SMTP_STARTTLS] fallo: {e_tls} (server={smtp_server}:587)")
 
     return False
 
-
-def _send_via_sendgrid(remitente, to_email, subject, html_content, plain_text='', attachments=None):
-    """
-    Envía correo usando la API de SendGrid.
-    Attachments es una lista opcional de diccionarios: [{'filename': str, 'file_bytes': bytes, 'file_type': str}]
-    """
-    if not _HAS_SENDGRID:
-        print("[SENDGRID] sendgrid package no disponible")
-        return False
-    api_key = os.getenv('SENDGRID_API_KEY')
-    if not api_key:
-        print("[SENDGRID] SENDGRID_API_KEY no configurada")
-        return False
-    try:
-        message = Mail(
-            from_email=remitente,
-            to_emails=to_email,
-            subject=subject,
-            html_content=html_content,
-            plain_text_content=plain_text
-        )
-
-        if attachments:
-            for attachment_info in attachments:
-                # Codificar los bytes a base64 (requerido por SendGrid)
-                encoded_file = base64.b64encode(attachment_info['file_bytes']).decode()
-                
-                attachment = Attachment(
-                    FileContent(encoded_file),
-                    FileName(attachment_info['filename']),
-                    FileType(attachment_info['file_type']),
-                    Disposition('attachment')
-                )
-                message.add_attachment(attachment)
-        
-        sg = SendGridAPIClient(api_key)
-        resp = sg.send(message)
-        print(f"[SENDGRID] status={resp.status_code} To={to_email}")
-        return 200 <= resp.status_code < 300
-    except Exception as e:
-        print(f"[SENDGRID] fallo: {e}")
-        return False
-
+# Eliminada la función _send_via_sendgrid
 
 def _dump_email_to_file(msg, purpose='email'):
     """Guarda el contenido de un EmailMessage a un archivo .eml para debugging."""
@@ -167,26 +121,69 @@ def _get_email_settings():
         'smtp_port': int(os.getenv('SMTP_PORT', '465')), # Puerto 465 por defecto para SSL
         # SMTP_USERNAME puede ser el mismo que SMTP_EMAIL si no se especifica.
         'smtp_username': os.getenv('SMTP_USERNAME', os.getenv('SMTP_EMAIL', '')),
-        'sendgrid_api_key': os.getenv('SENDGRID_API_KEY')
+        # 'sendgrid_api_key': os.getenv('SENDGRID_API_KEY') # ELIMINADA
     }
     
-    # Chequeo mínimo: Si no hay clave SendGrid, debe haber credenciales SMTP completas.
+    # Chequeo mínimo: Solo necesitamos credenciales SMTP completas.
     has_smtp_creds = settings['remitente'] and settings['password'] and settings['smtp_server']
     
-    if not settings['sendgrid_api_key'] and not has_smtp_creds:
-        print("[EMAIL_SETUP] Faltan variables críticas (SMTP_EMAIL/PASSWORD/SERVER o SENDGRID_API_KEY).")
+    if not has_smtp_creds:
+        print("[EMAIL_SETUP] Faltan variables críticas (SMTP_EMAIL/PASSWORD/SERVER).")
         return None
         
     return settings
 
 # =========================================================================
-# 4. FUNCIONES DE ALTO NIVEL (USO)
+# 4. FUNCIONES DE ALTO NIVEL (USO) - Lógica de envío simplificada
 # =========================================================================
 
-def enviar_alerta_stock(destinatario, producto, cantidad):
+def _send_email_message(destinatario, asunto, texto, html, attachments=None, purpose='general'):
+    """Helper para crear y enviar el EmailMessage, ahora el único método de envío."""
     settings = _get_email_settings()
     if not settings: return False
+
+    msg = EmailMessage()
+    msg.set_content(texto)
+    msg.add_alternative(html, subtype='html')
+    msg['Subject'] = asunto
+    msg['From'] = settings['remitente']
+    msg['To'] = destinatario
     
+    # Manejar adjuntos para SMTP
+    if attachments:
+        for attachment_info in attachments:
+            try:
+                # Los bytes del archivo ya están en pdf_bytes
+                msg.add_attachment(
+                    attachment_info['file_bytes'], 
+                    maintype=attachment_info['file_type'].split('/')[0], 
+                    subtype=attachment_info['file_type'].split('/')[1], 
+                    filename=attachment_info['filename']
+                )
+            except Exception as e:
+                print(f'[{purpose.upper()}] Error adjuntando archivo a EmaiMessage: {e}')
+
+    sent = _send_message_smtp(
+        settings['remitente'], 
+        settings['smtp_username'], 
+        settings['password'], 
+        settings['smtp_server'], 
+        settings['smtp_port'], 
+        msg
+    )
+    
+    if sent:
+        print(f"[{purpose.upper()}] Enviado OK a {destinatario}")
+    else:
+        print(f"[{purpose.upper()}] Error enviando correo a {destinatario} - volcando a disco")
+        _dump_email_to_file(msg, purpose=purpose)
+        
+    return sent
+
+
+# --- Funciones de uso modificadas ---
+
+def enviar_alerta_stock(destinatario, producto, cantidad):
     asunto = "¡Atención! Stock bajo en JosniShop"
     texto = f"Producto: {producto}\nQuedan {cantidad} unidades."
 
@@ -197,32 +194,10 @@ def enviar_alerta_stock(destinatario, producto, cantidad):
         footer="Revisa el inventario en tu panel de control.",
         button_html=""
     )
-    
-    # Prioridad SendGrid
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], destinatario, asunto, html, texto)
-    else:
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = asunto
-        msg['From'] = settings['remitente']
-        msg['To'] = destinatario
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[ALERTA_STOCK] Correo enviado a {destinatario} | Producto: {producto}")
-    else:
-        print(f"[ALERTA_STOCK] Error enviando correo a {destinatario} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='alerta_stock')
-    return sent
+    return _send_email_message(destinatario, asunto, texto, html, purpose='alerta_stock')
 
 
 def enviar_confirmacion_compra(correo, pedido_id, pdf_bytes=None, filename=None):
-    settings = _get_email_settings()
-    if not settings: return False
-    
     asunto = "¡Gracias por tu compra en JosniShop!"
     texto = f"Tu compra ha sido confirmada. Pedido: {pedido_id}.\nDescarga la factura adjunta para tener un respaldo de tu compra."
 
@@ -246,40 +221,10 @@ def enviar_confirmacion_compra(correo, pedido_id, pdf_bytes=None, filename=None)
         }]
         print(f'[CONFIRMACION_COMPRA] PDF adjuntado: {filename} ({len(pdf_bytes)} bytes)')
 
-    # Prioridad SendGrid (maneja adjuntos en _send_via_sendgrid)
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], correo, asunto, html, texto, attachments=attachments)
-    else:
-        # SMTP (maneja adjuntos con EmailMessage)
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = asunto
-        msg['From'] = settings['remitente']
-        msg['To'] = correo
-
-        if pdf_bytes:
-            try:
-                # El filename ya fue definido arriba
-                msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
-            except Exception as e:
-                print(f'[CONFIRMACION_COMPRA] Error adjuntando PDF a EmaiMessage: {e}')
-                
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[CONFIRMACION_COMPRA] Correo enviado a {correo} | Pedido: {pedido_id}")
-    else:
-        print(f"[CONFIRMACION_COMPRA] Error enviando correo a {correo} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='confirmacion_compra')
-    return sent
+    return _send_email_message(correo, asunto, texto, html, attachments=attachments, purpose='confirmacion_compra')
 
 
 def send_registration_email(to_email):
-    settings = _get_email_settings()
-    if not settings: return False
-
     subject = "Registro exitoso en JosniShop"
     texto = "Te has registrado exitosamente en JosniShop."
 
@@ -290,31 +235,10 @@ def send_registration_email(to_email):
         footer="Disfruta de la experiencia de compra.",
         button_html=""
     )
-
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], to_email, subject, html, texto)
-    else:
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = subject
-        msg['From'] = settings['remitente']
-        msg['To'] = to_email
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[REGISTRATION] Correo de registro enviado a {to_email}")
-    else:
-        print(f"[REGISTRATION] Error enviando correo de registro a {to_email} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='registration')
-    return sent
+    return _send_email_message(to_email, subject, texto, html, purpose='registration')
 
 
 def enviar_alerta_resena(destinatario, producto, comentario, calificacion):
-    settings = _get_email_settings()
-    if not settings: return False
-    
     asunto = "¡Nueva reseña en tu producto JosniShop!"
     texto = f"Nueva reseña en {producto}: {calificacion} estrellas."
 
@@ -325,31 +249,10 @@ def enviar_alerta_resena(destinatario, producto, comentario, calificacion):
         footer="Revisa tu panel para responder o gestionar la reseña.",
         button_html=""
     )
-
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], destinatario, asunto, html, texto)
-    else:
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = asunto
-        msg['From'] = settings['remitente']
-        msg['To'] = destinatario
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[ALERTA_RESENA] Correo enviado a {destinatario} | Producto: {producto}")
-    else:
-        print(f"[ALERTA_RESENA] Error enviando correo a {destinatario} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='alerta_resena')
-    return sent
+    return _send_email_message(destinatario, asunto, texto, html, purpose='alerta_resena')
 
 
 def enviar_respuesta_resena(destinatario, producto, respuesta_vendedor):
-    settings = _get_email_settings()
-    if not settings: return False
-
     asunto = "Tu reseña ha recibido una respuesta en JosniShop"
     texto = f"Tu reseña sobre {producto} ha sido respondida."
 
@@ -360,31 +263,10 @@ def enviar_respuesta_resena(destinatario, producto, respuesta_vendedor):
         footer="Puedes ver la conversación en tu panel de usuario.",
         button_html=""
     )
-
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], destinatario, asunto, html, texto)
-    else:
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = asunto
-        msg['From'] = settings['remitente']
-        msg['To'] = destinatario
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[RESPUESTA_RESENA] Correo enviado a {destinatario} | Producto: {producto}")
-    else:
-        print(f"[RESPUESTA_RESENA] Error enviando correo a {destinatario} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='respuesta_resena')
-    return sent
+    return _send_email_message(destinatario, asunto, texto, html, purpose='respuesta_resena')
 
 
 def enviar_cambio_estado_pedido(correo, pedido_id, nuevo_estado):
-    settings = _get_email_settings()
-    if not settings: return False
-
     asunto = f"Actualización de estado del pedido #{pedido_id}"
     texto = f"El estado de tu pedido #{pedido_id} ha cambiado a: {nuevo_estado}."
 
@@ -395,25 +277,7 @@ def enviar_cambio_estado_pedido(correo, pedido_id, nuevo_estado):
         footer="Consulta más detalles en tu panel de usuario.",
         button_html=""
     )
-
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], correo, asunto, html, texto)
-    else:
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = asunto
-        msg['From'] = settings['remitente']
-        msg['To'] = correo
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[ESTADO_PEDIDO] Correo enviado a {correo} | Pedido: {pedido_id} | Estado: {nuevo_estado}")
-    else:
-        print(f"[ESTADO_PEDIDO] Error enviando correo a {correo} | Pedido: {pedido_id} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='estado_pedido')
-    return sent
+    return _send_email_message(correo, asunto, texto, html, purpose='estado_pedido')
 
 
 def enviar_recuperacion_contrasena(destinatario, nueva_contrasena):
@@ -452,21 +316,4 @@ def enviar_recuperacion_contrasena(destinatario, nueva_contrasena):
 
     print(f"[ENVIAR_RECUPERACION] Para={destinatario} | Asunto={asunto} | SMTP={settings['smtp_server']}:{settings['smtp_port']}")
     
-    if settings['sendgrid_api_key']:
-        sent = _send_via_sendgrid(settings['remitente'], destinatario, asunto, html, texto)
-    else:
-        msg = EmailMessage()
-        msg.set_content(texto)
-        msg.add_alternative(html, subtype='html')
-        msg['Subject'] = asunto
-        msg['From'] = settings['remitente']
-        msg['To'] = destinatario
-        sent = _send_message_smtp(settings['remitente'], settings['smtp_username'], settings['password'], settings['smtp_server'], settings['smtp_port'], msg)
-        
-    if sent:
-        print(f"[ENVIAR_RECUPERACION] Enviado OK a {destinatario}")
-    else:
-        print(f"[ENVIAR_RECUPERACION] Error enviando correo a {destinatario} - volcando a disco")
-        if not settings['sendgrid_api_key']:
-            _dump_email_to_file(msg, purpose='recuperacion')
-    return sent
+    return _send_email_message(destinatario, asunto, texto, html, purpose='recuperacion')
