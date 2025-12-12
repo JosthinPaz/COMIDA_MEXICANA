@@ -95,57 +95,14 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_security_headers(request, call_next):
-    # Seguridad básica
-    origin = request.headers.get('origin')
-    # Build CORS values depending on allowed_origins
-    allowed_origin_value = None
-    if origin and origin in allowed_origins:
-        allowed_origin_value = origin
-    elif '*' in allowed_origins:
-        allowed_origin_value = '*'
-
-    # If preflight request, return appropriate headers immediately
-    if request.method == 'OPTIONS':
-        resp = Response(status_code=204)
-        if allowed_origin_value:
-            resp.headers['Access-Control-Allow-Origin'] = allowed_origin_value
-            resp.headers['Vary'] = 'Origin'
-        if allow_credentials_cors:
-            resp.headers['Access-Control-Allow-Credentials'] = 'true'
-        resp.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
-        req_headers = request.headers.get('access-control-request-headers')
-        if req_headers:
-            resp.headers['Access-Control-Allow-Headers'] = req_headers
-        else:
-            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        # Security headers
-        resp.headers["X-Content-Type-Options"] = "nosniff"
-        resp.headers["X-Frame-Options"] = "DENY"
-        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        resp.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' https://cdn.jsdelivr.net; "
-            "connect-src 'self' https://cdn.jsdelivr.net; "
-            "frame-ancestors 'none';"
-        )
-        return resp
-
+    # No interceptemos el preflight; dejamos que CORSMiddleware lo maneje.
     response = await call_next(request)
-    # Add CORS headers if missing
-    if allowed_origin_value:
-        response.headers.setdefault('Access-Control-Allow-Origin', allowed_origin_value)
-        response.headers.setdefault('Vary', 'Origin')
-    if allow_credentials_cors:
-        response.headers.setdefault('Access-Control-Allow-Credentials', 'true')
 
-    # Seguridad adicional
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Content-Security-Policy"] = (
+    # Añadir cabeceras de seguridad adicionales en la respuesta final
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    response.headers.setdefault("Content-Security-Policy", (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
@@ -153,7 +110,17 @@ async def add_security_headers(request, call_next):
         "font-src 'self' https://cdn.jsdelivr.net; "
         "connect-src 'self' https://cdn.jsdelivr.net; "
         "frame-ancestors 'none';"
-    )
+    ))
+
+    # En entornos de desarrollo, si el origen está presente y no fue permitido por CORSMiddleware,
+    # permitimos temporalmente el origen para facilitar debugging (no recomendado en producción).
+    origin = request.headers.get('origin')
+    if origin and environment != 'production':
+        response.headers.setdefault('Access-Control-Allow-Origin', origin)
+        response.headers.setdefault('Vary', 'Origin')
+        if allow_credentials_cors:
+            response.headers.setdefault('Access-Control-Allow-Credentials', 'true')
+
     return response
 
 # --- Inclusión de todas las rutas de la API ---
