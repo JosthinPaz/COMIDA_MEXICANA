@@ -1,12 +1,16 @@
 import os
 import smtplib
+import ssl
 from email.message import EmailMessage
 from datetime import datetime
 from pathlib import Path
-# No es necesario base64 ni sendgrid imports
-# import base64 
-# try: ... except ImportError: ...
-# _HAS_SENDGRID = False # Eliminado
+
+try:
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import Mail, Email, To, Content
+    _HAS_SENDGRID = True
+except ImportError:
+    _HAS_SENDGRID = False
 
 # =========================================================================
 # 1. PLANTILLA HTML
@@ -52,8 +56,63 @@ HTML_EMAIL_TEMPLATE = """<!doctype html>
 
 
 # =========================================================================
-# 2. UTILITIES DE BAJO NIVEL (Solo SMTP)
+# 2. UTILITIES DE BAJO NIVEL
 # =========================================================================
+
+def _send_message_sendgrid(api_key, remitente, destinatario, asunto, texto, html):
+    """Send email via SendGrid API usando requests para evitar problemas SSL.
+    Returns True on success, False on failure.
+    """
+    try:
+        import requests
+        import json
+        
+        # Deshabilitar warnings de SSL
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+        # Usar requests directamente sin verificación SSL (para desarrollo)
+        url = "https://api.sendgrid.com/v3/mail/send"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "personalizations": [
+                {
+                    "to": [{"email": destinatario}],
+                    "subject": asunto
+                }
+            ],
+            "from": {"email": remitente},
+            "content": [
+                {
+                    "type": "text/plain",
+                    "value": texto
+                },
+                {
+                    "type": "text/html",
+                    "value": html
+                }
+            ]
+        }
+        
+        # Hacer request sin verificación SSL
+        response = requests.post(url, json=payload, headers=headers, verify=False)
+        
+        if response.status_code in [200, 201, 202]:
+            print(f"[SENDGRID] Enviado exitosamente a {destinatario} (Status: {response.status_code})")
+            return True
+        else:
+            print(f"[SENDGRID] Error {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"[SENDGRID] Error enviando a {destinatario}: {e}")
+        print(f"[SENDGRID] Intentando fallback a SMTP...")
+        return False
+
 
 def _send_message_smtp(remitente, username, password, smtp_server, smtp_port, msg):
     """Try sending via SMTP_SSL first, then fallback to STARTTLS on port 587.
@@ -90,7 +149,6 @@ def _send_message_smtp(remitente, username, password, smtp_server, smtp_port, ms
 
     return False
 
-# Eliminada la función _send_via_sendgrid
 
 def _dump_email_to_file(msg, purpose='email'):
     """Guarda el contenido de un EmailMessage a un archivo .eml para debugging."""
@@ -108,6 +166,7 @@ def _dump_email_to_file(msg, purpose='email'):
         print(f"[EMAIL_DUMP] Error guardando email: {e}")
         return False
 
+
 # =========================================================================
 # 3. OBTENCIÓN CENTRALIZADA DE VARIABLES
 # =========================================================================
@@ -118,13 +177,17 @@ def _get_email_settings():
         'remitente': os.getenv('SMTP_EMAIL'),
         'password': os.getenv('SMTP_PASSWORD'),
         'smtp_server': os.getenv('SMTP_SERVER'),
-        'smtp_port': int(os.getenv('SMTP_PORT', '465')), # Puerto 465 por defecto para SSL
-        # SMTP_USERNAME puede ser el mismo que SMTP_EMAIL si no se especifica.
+        'smtp_port': int(os.getenv('SMTP_PORT', '465')),  # Puerto 465 por defecto para SSL
         'smtp_username': os.getenv('SMTP_USERNAME', os.getenv('SMTP_EMAIL', '')),
-        # 'sendgrid_api_key': os.getenv('SENDGRID_API_KEY') # ELIMINADA
+        'sendgrid_api_key': os.getenv('SENDGRID_API_KEY')
     }
     
-    # Chequeo mínimo: Solo necesitamos credenciales SMTP completas.
+    # Si tenemos SendGrid API key, la usamos (prioritaria para producción)
+    if settings['sendgrid_api_key'] and _HAS_SENDGRID:
+        print("[EMAIL_SETUP] Usando SendGrid API")
+        return settings
+    
+    # Si no, usamos SMTP
     has_smtp_creds = settings['remitente'] and settings['password'] and settings['smtp_server']
     
     if not has_smtp_creds:
@@ -133,15 +196,50 @@ def _get_email_settings():
         
     return settings
 
+
 # =========================================================================
 # 4. FUNCIONES DE ALTO NIVEL (USO) - Lógica de envío simplificada
 # =========================================================================
 
-def _send_email_message(destinatario, asunto, texto, html, attachments=None, purpose='general'):
-    """Helper para crear y enviar el EmailMessage, ahora el único método de envío."""
+def _send_email_message(destinatario, asunto, texto, html, attachments=None, purpose='general', force_smtp=False):
+    """Helper para crear y enviar el EmailMessage. Usa SendGrid si está disponible, si no SMTP.
+    
+    Args:
+        force_smtp: Si es True, fuerza el uso de SMTP ignorando SendGrid
+    """
     settings = _get_email_settings()
-    if not settings: return False
+    if not settings: 
+        return False
 
+    # Prioridad: SendGrid si está configurado y disponible (a menos que force_smtp=True)
+    if not force_smtp and settings.get('sendgrid_api_key') and _HAS_SENDGRID:
+        sent = _send_message_sendgrid(
+            settings['sendgrid_api_key'],
+            settings['remitente'],
+            destinatario,
+            asunto,
+            texto,
+            html
+        )
+        if sent:
+            print(f"[{purpose.upper()}] Enviado OK via SendGrid a {destinatario}")
+        else:
+            print(f"[{purpose.upper()}] Error enviando via SendGrid a {destinatario}")
+            # Si SendGrid falla, intentar SMTP como fallback
+            print(f"[{purpose.upper()}] Usando fallback SMTP...")
+            return _try_smtp_fallback(destinatario, asunto, texto, html, attachments, purpose)
+        return sent
+
+    # Usar SMTP
+    return _try_smtp_fallback(destinatario, asunto, texto, html, attachments, purpose)
+
+
+def _try_smtp_fallback(destinatario, asunto, texto, html, attachments, purpose):
+    """Intenta enviar usando SMTP."""
+    settings = _get_email_settings()
+    if not settings: 
+        return False
+    
     msg = EmailMessage()
     msg.set_content(texto)
     msg.add_alternative(html, subtype='html')
@@ -161,7 +259,7 @@ def _send_email_message(destinatario, asunto, texto, html, attachments=None, pur
                     filename=attachment_info['filename']
                 )
             except Exception as e:
-                print(f'[{purpose.upper()}] Error adjuntando archivo a EmaiMessage: {e}')
+                print(f'[{purpose.upper()}] Error adjuntando archivo a EmailMessage: {e}')
 
     sent = _send_message_smtp(
         settings['remitente'], 
@@ -173,7 +271,7 @@ def _send_email_message(destinatario, asunto, texto, html, attachments=None, pur
     )
     
     if sent:
-        print(f"[{purpose.upper()}] Enviado OK a {destinatario}")
+        print(f"[{purpose.upper()}] Enviado OK via SMTP a {destinatario}")
     else:
         print(f"[{purpose.upper()}] Error enviando correo a {destinatario} - volcando a disco")
         _dump_email_to_file(msg, purpose=purpose)
@@ -213,7 +311,8 @@ def enviar_confirmacion_compra(correo, pedido_id, pdf_bytes=None, filename=None)
     
     attachments = None
     if pdf_bytes:
-        if not filename: filename = f'factura_pedido_{pedido_id}.pdf'
+        if not filename: 
+            filename = f'factura_pedido_{pedido_id}.pdf'
         attachments = [{
             'filename': filename,
             'file_bytes': pdf_bytes,
@@ -282,7 +381,8 @@ def enviar_cambio_estado_pedido(correo, pedido_id, nuevo_estado):
 
 def enviar_recuperacion_contrasena(destinatario, nueva_contrasena):
     settings = _get_email_settings()
-    if not settings: return False
+    if not settings: 
+        return False
 
     asunto = "Recuperación de contraseña - JosniShop"
     texto = f"Tu nueva contraseña temporal es: {nueva_contrasena}"
