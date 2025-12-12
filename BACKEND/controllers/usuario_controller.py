@@ -63,8 +63,9 @@ def is_blocked(key):
 # Clase para la validación de la petición de recuperación de contraseña.
 class RecuperarRequest(BaseModel):
     # Mantener la clase por compatibilidad en caso de uso interno,
-    # pero el endpoint acepta ahora tanto 'email' como 'correo' en el body.
+    # el endpoint acepta preferentemente 'email' pero también 'correo' para compatibilidad.
     email: Optional[str] = None
+    correo: Optional[str] = None
 
 # Email sending for password recovery is handled in `utils.email_utils.enviar_recuperacion_contrasena`
 
@@ -207,32 +208,35 @@ def login(user: UsuarioLogin, request: Request):
 
 ### 8. Recuperar contraseña (POST)
 @router.post("/recuperar-contrasena")
-def recuperar_contrasena(payload: dict = Body(...)):
+def recuperar_contrasena(payload: RecuperarRequest):
     # Aceptar tanto {"email": "..."} como {"correo": "..."}
-    email = payload.get("email") or payload.get("correo")
+    email = payload.email or payload.correo or payload.dict().get('email') or payload.dict().get('correo')
     if not email:
-        raise HTTPException(status_code=422, detail=[{"type": "missing", "loc": ["body", "email"], "msg": "Field required", "input": payload}])
+        raise HTTPException(status_code=422, detail=[{"type": "missing", "loc": ["body", "email"], "msg": "Field required", "input": payload.dict()}])
 
     db = SessionLocal()
     usuario = db.query(Usuario).filter(Usuario.correo == email).first()
-    if not usuario:
-        # Por seguridad, no se debe especificar si el correo existe o no.
-        # Se envía una respuesta genérica para evitar enumerar usuarios.
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # Genera una contraseña aleatoria de 8 caracteres.
+    # Genera una contraseña aleatoria de 8 caracteres y actualiza solo si el usuario existe.
     nueva_contrasena = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    # Encripta la nueva contraseña antes de guardarla.
-    hashed = bcrypt.hashpw(nueva_contrasena.encode('utf-8'), bcrypt.gensalt())
-    usuario.contraseña = hashed.decode('utf-8')
-    db.commit()
+    if usuario:
+        hashed = bcrypt.hashpw(nueva_contrasena.encode('utf-8'), bcrypt.gensalt())
+        usuario.contraseña = hashed.decode('utf-8')
+        db.commit()
     db.close()
 
-    # Envía el correo con la nueva contraseña temporal (usa plantilla central)
-    # enviar_recuperacion_contrasena hace login con las credenciales en env
-    enviar_recuperacion_contrasena(email, nueva_contrasena)
+    # Envía el correo con la nueva contraseña temporal (si el usuario existe).
+    # No indicamos en la respuesta si el email existe para no permitir enumeración.
+    try:
+        if usuario:
+            enviar_recuperacion_contrasena(email, nueva_contrasena)
+        else:
+            # Si no existe, evitamos errores y sólo registramos el intento.
+            print(f"[RECUPERAR] Solicitud de recuperación para correo no existente: {email}")
+    except Exception as e:
+        print(f"[RECUPERAR] Error al enviar correo de recuperación: {e}")
 
-    return {"msg": "Nueva contraseña enviada al correo"}
+    return {"msg": "Si el correo existe, recibirás un email con instrucciones."}
 
 
 ### 9. Refrescar el token de acceso (POST)
