@@ -2,6 +2,34 @@ import os
 import smtplib
 from email.message import EmailMessage
 
+
+def _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+    """Try sending via SMTP_SSL first, then fallback to STARTTLS on port 587.
+    Returns True on success, False on failure. Prints detailed errors for debugging.
+    """
+    # Try SSL (commonly port 465)
+    try:
+        with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=20) as server:
+            server.login(remitente, password)
+            server.send_message(msg)
+        return True
+    except Exception as e_ssl:
+        print(f"[SMTP_SSL] fallo: {e_ssl} (server={smtp_server}:{smtp_port})")
+
+    # Fallback to STARTTLS (commonly port 587)
+    try:
+        with smtplib.SMTP(smtp_server, 587, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(remitente, password)
+            server.send_message(msg)
+        return True
+    except Exception as e_tls:
+        print(f"[SMTP_STARTTLS] fallo: {e_tls} (server={smtp_server}:587)")
+
+    return False
+
 def enviar_alerta_stock(destinatario, producto, cantidad):
     remitente = os.getenv('SMTP_EMAIL', 'josnishop@gmail.com')
     password = os.getenv('SMTP_PASSWORD', 'uoth lcxb qbvf yixd')
@@ -25,13 +53,11 @@ def enviar_alerta_stock(destinatario, producto, cantidad):
     msg['Subject'] = asunto
     msg['From'] = remitente
     msg['To'] = destinatario
-
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-    except Exception as e:
-        print("Error enviando correo:", e)
+    # Use helper that attempts SSL then STARTTLS and logs errors
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[ALERTA_STOCK] Correo enviado a {destinatario} | Producto: {producto}")
+    else:
+        print(f"[ALERTA_STOCK] Error enviando correo a {destinatario}")
 
 def enviar_confirmacion_compra(correo, pedido_id, pdf_bytes=None, filename=None):
     """Envía el correo de confirmación de compra. Acepta opcionalmente `pdf_bytes` para adjuntar la factura."""
@@ -73,13 +99,10 @@ def enviar_confirmacion_compra(correo, pedido_id, pdf_bytes=None, filename=None)
     else:
         print(f'[CONFIRMACION_COMPRA] No se proporcionó pdf_bytes para el pedido {pedido_id}')
 
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-            print(f"[CONFIRMACION_COMPRA] Correo enviado a {correo} | Pedido: {pedido_id}")
-    except Exception as e:
-        print(f"[CONFIRMACION_COMPRA] Error enviando correo: {e}")
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[CONFIRMACION_COMPRA] Correo enviado a {correo} | Pedido: {pedido_id}")
+    else:
+        print(f"[CONFIRMACION_COMPRA] Error enviando correo a {correo}")
 
 def send_registration_email(to_email):
     remitente = os.getenv('SMTP_EMAIL', 'josnishop@gmail.com')
@@ -105,12 +128,10 @@ def send_registration_email(to_email):
     msg['From'] = remitente
     msg['To'] = to_email
 
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-    except Exception as e:
-        print("Error enviando correo:", e)
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[REGISTRATION] Correo de registro enviado a {to_email}")
+    else:
+        print(f"[REGISTRATION] Error enviando correo de registro a {to_email}")
 
 def enviar_alerta_resena(destinatario, producto, comentario, calificacion):
     remitente = os.getenv('SMTP_EMAIL', 'josnishop@gmail.com')
@@ -136,12 +157,10 @@ def enviar_alerta_resena(destinatario, producto, comentario, calificacion):
     msg['From'] = remitente
     msg['To'] = destinatario
 
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-    except Exception as e:
-        print("Error enviando correo:", e)
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[ALERTA_RESENA] Correo enviado a {destinatario} | Producto: {producto}")
+    else:
+        print(f"[ALERTA_RESENA] Error enviando correo a {destinatario}")
 
 
 def enviar_respuesta_resena(destinatario, producto, respuesta_vendedor):
@@ -169,12 +188,10 @@ def enviar_respuesta_resena(destinatario, producto, respuesta_vendedor):
     msg['From'] = remitente
     msg['To'] = destinatario
 
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-    except Exception as e:
-        print("Error enviando correo (respuesta reseña):", e)
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[RESPUESTA_RESENA] Correo enviado a {destinatario} | Producto: {producto}")
+    else:
+        print(f"[RESPUESTA_RESENA] Error enviando correo a {destinatario}")
 
 
 def enviar_cambio_estado_pedido(correo, pedido_id, nuevo_estado):
@@ -202,12 +219,10 @@ def enviar_cambio_estado_pedido(correo, pedido_id, nuevo_estado):
     msg['From'] = remitente
     msg['To'] = correo
 
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-    except Exception as e:
-        print("Error enviando correo (estado pedido):", e)
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[ESTADO_PEDIDO] Correo enviado a {correo} | Pedido: {pedido_id} | Estado: {nuevo_estado}")
+    else:
+        print(f"[ESTADO_PEDIDO] Error enviando correo a {correo} | Pedido: {pedido_id}")
 
 
 def enviar_recuperacion_contrasena(destinatario, nueva_contrasena):
@@ -256,13 +271,10 @@ def enviar_recuperacion_contrasena(destinatario, nueva_contrasena):
 
     # Debug output to confirm function is used and message structure
     print(f"[ENVIAR_RECUPERACION] Para={destinatario} | Asunto={asunto} | SMTP={smtp_server}:{smtp_port}")
-    try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
-            server.login(remitente, password)
-            server.send_message(msg)
-            print(f"[ENVIAR_RECUPERACION] Enviado OK a {destinatario}")
-    except Exception as e:
-        print('Error enviando correo (recuperacion):', e)
+    if _send_message_smtp(remitente, password, smtp_server, smtp_port, msg):
+        print(f"[ENVIAR_RECUPERACION] Enviado OK a {destinatario}")
+    else:
+        print(f"[ENVIAR_RECUPERACION] Error enviando correo a {destinatario}")
     # function finished
 
 
