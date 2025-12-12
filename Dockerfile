@@ -1,39 +1,37 @@
 # Usar una imagen base de Python oficial y ligera
 FROM python:3.11-slim
 
-# Instalar dependencias del sistema necesarias (MariaDB y Cairo)
+# Instalar dependencias del sistema necesarias
+# Incluye las librerías para MySQL y Cairo/ReportLab
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        ca-certificates \
-        # Dependencias de MariaDB/MySQL
         default-libmysqlclient-dev \
         gcc \
         pkg-config \
-        # Nuevas dependencias de Cairo y FreeType (para pycairo y ReportLab)
         libcairo2-dev \
         libfreetype6-dev \
-        # Paquetes para TLS y compilación de extensiones Python
         libssl-dev \
         python3-dev \
-        # Paquetes de desarrollo general que podrían ser útiles
         build-essential && \
+    # Limpieza final para reducir el tamaño de la imagen
+    apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Establecer el directorio de trabajo dentro del contenedor
+# Establecer el directorio de trabajo base
 WORKDIR /app
 
-# Copiar todo el contenido del repositorio al directorio de trabajo del contenedor
-COPY . /app
+# Copiar el archivo de dependencias y la carpeta del Backend
+COPY requirements.txt /app/
+COPY BACKEND /app/BACKEND
 
 # Establecer el directorio de trabajo en la carpeta de la aplicación (BACKEND)
 WORKDIR /app/BACKEND
 
-# Upgrade pip/tools then instalar las dependencias de Python
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+# Upgrade pip y luego instalar las dependencias de Python
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r /app/requirements.txt
 
 # El comando de inicio que se ejecutará al iniciar el contenedor
-# *** LÍNEA RESTAURADA: Ahora usa Alembic para las migraciones. ***
 CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"]
 
 # Exponer el puerto
