@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "../../contexts/useToastContext";
@@ -47,7 +48,7 @@ const UserRoles: React.FC = () => {
 
   const load = useCallback(async () => {
     try {
-      const u = await axios.get<Usuario[]>("http://localhost:8000/usuarios");
+      const u = await axios.get<Usuario[]>(`${API}/usuarios`);
       const usersWithFixedState = u.data.map(user => ({
         ...user,
         estado: user.estado
@@ -106,7 +107,7 @@ const UserRoles: React.FC = () => {
   const confirmChange = async () => {
     if (!pendingChange) return;
       try {
-      await axios.put(`http://localhost:8000/usuarios/${pendingChange.userId}`, {
+      await axios.put(`${API}/usuarios/${pendingChange.userId}`, {
         rol_id: pendingChange.rolId
       });
       setPendingChange(null);

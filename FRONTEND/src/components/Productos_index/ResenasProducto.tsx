@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import "../../assets/css/producto_sele/Producto_selec.css";
 
 const ResenasProducto: React.FC<{ id_producto: number }> = ({ id_producto }) => {
@@ -8,7 +9,7 @@ const ResenasProducto: React.FC<{ id_producto: number }> = ({ id_producto }) => 
 
   useEffect(() => {
     axios
-      .get(`http://localhost:8000/api/resenas/producto/${id_producto}`)
+      .get(`${API}/api/resenas/producto/${id_producto}`)
       .then((res) => setResenas(res.data))
       .catch(() => setResenas([]))
       .finally(() => setLoading(false));

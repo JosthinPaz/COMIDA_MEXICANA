@@ -3,6 +3,7 @@ import "../assets/css/inicio.css";
 import "font-awesome/css/font-awesome.min.css";
 import { FaBars } from "react-icons/fa";
 import { useToast } from "../contexts/useToastContext";
+import { API } from '../config/api';
 
 const Inicio: React.FC = () => {
   const innerRef = useRef<HTMLDivElement>(null);
@@ -57,8 +58,7 @@ const Inicio: React.FC = () => {
     // cargar categorias desde backend para el select
     (async () => {
       try {
-        const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
-        const res = await fetch(`${API || ''}/categorias/`);
+        const res = await fetch(`${API}/categorias/`);
         if (!res.ok) return;
         const data = await res.json();
         // data debería ser array de categorias con {id, nombre}
@@ -84,11 +84,11 @@ const Inicio: React.FC = () => {
       if (vendedorId) formData.append('vendedor_id', String(vendedorId));
       if (formFile) formData.append('file', formFile);
 
-      const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
+      // use centralized API
       const token = localStorage.getItem('token') || '';
       const headers: any = {};
       if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(`${API || ''}/productos/full`, {
+      const res = await fetch(`${API}/productos/full`, {
         method: 'POST',
         headers,
         body: formData,
@@ -111,8 +111,7 @@ const Inicio: React.FC = () => {
       setShowAddModal(false);
       // Recargar productos sin recargar la página
       try {
-        const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
-        const res2 = await fetch(`${API || ''}/productos/rich`);
+        const res2 = await fetch(`${API}/productos/rich`);
         if (res2.ok) {
           const data2 = await res2.json();
           const mapped = data2.map((p: any) => {
@@ -122,8 +121,7 @@ const Inicio: React.FC = () => {
               if (v.startsWith('http://') || v.startsWith('https://') || v.startsWith('//')) {
                 imgUrl = v;
               } else {
-                const API2 = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
-                imgUrl = `${API2 || ''}${v}`;
+                imgUrl = `${API}${v}`;
               }
             }
             return {
@@ -160,7 +158,7 @@ const Inicio: React.FC = () => {
     setWhatsappUrl(null);
 
     try {
-      const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
+      const { API } = await import('../config/api');
       let userId = Number(localStorage.getItem('userId')) || null;
       if (!userId && token) {
         try {
@@ -177,7 +175,7 @@ const Inicio: React.FC = () => {
       const token = localStorage.getItem('token') || '';
       const headers: any = { 'Content-Type': 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(`${API || ''}/bot/respond`, {
+      const res = await fetch(`${API}/bot/respond`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ usuario_origen: userId, mensaje: text, history })
@@ -202,8 +200,8 @@ const Inicio: React.FC = () => {
     let mounted = true;
     (async () => {
       try {
-        const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
-        const res = await fetch(`${API || ''}/bot/wa`);
+        const { API } = await import('../config/api');
+        const res = await fetch(`${API}/bot/wa`);
         if (!res.ok) return;
         const d = await res.json();
         if (!mounted) return;
@@ -259,7 +257,7 @@ const Inicio: React.FC = () => {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/productos/rich');
+        const res = await fetch(`${API}/productos/rich`);
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
@@ -274,7 +272,7 @@ const Inicio: React.FC = () => {
             if (v.startsWith('http://') || v.startsWith('https://') || v.startsWith('//')) {
               imgUrl = v;
             } else {
-              imgUrl = `http://127.0.0.1:8000${v}`;
+                imgUrl = `${API}${v}`;
             }
           }
           return {

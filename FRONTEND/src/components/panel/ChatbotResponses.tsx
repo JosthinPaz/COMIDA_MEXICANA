@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "../../contexts/useToastContext";
@@ -29,7 +30,7 @@ const ChatbotResponses: React.FC = () => {
 
   const load = useCallback(async () => {
     try {
-      const res = await axios.get<Resp[]>("http://localhost:8000/bot/responses/");
+      const res = await axios.get<Resp[]>(`${API}/bot/responses/`);
       setItems(res.data);
       setFilteredItems(res.data);
     } catch (e) {
@@ -76,10 +77,10 @@ const ChatbotResponses: React.FC = () => {
     if (e) e.preventDefault();
     try {
       if (editingId) {
-        await axios.put(`http://localhost:8000/bot/responses/${editingId}`, form);
+        await axios.put(`${API}/bot/responses/${editingId}`, form);
         setEditingId(null);
       } else {
-        await axios.post("http://localhost:8000/bot/responses/", form);
+        await axios.post(`${API}/bot/responses/`, form);
       }
       setForm({ clave: "", respuesta: "", prioridad: 0, enabled: true });
       load();
@@ -101,7 +102,7 @@ const ChatbotResponses: React.FC = () => {
   const doDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await axios.delete(`http://localhost:8000/bot/responses/${deleteTarget}`);
+      await axios.delete(`${API}/bot/responses/${deleteTarget}`);
       setDeleteTarget(null);
       load();
     } catch (err) {

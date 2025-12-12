@@ -4,6 +4,7 @@ import ResenasProducto from "./ResenasProducto";
 import "../../assets/css/producto_sele/Producto_selec.css";
 import NavBar from "../NavBar";
 import { useToast } from "../../contexts/useToastContext";
+import { API } from '../../config/api';
 
 type Producto = {
   id: number;
@@ -49,8 +50,7 @@ const ProductoDetalle: React.FC = () => {
   useEffect(() => {
     if (!productoId) return;
     (async () => {
-      // Get api base from environment (Vite). If not set, default to backend address.
-      const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
+      // Use centralized API base
       try {
         // fetch basic producto
         const res = await fetch(`${API}/productos/${productoId}`);
@@ -93,7 +93,7 @@ const ProductoDetalle: React.FC = () => {
                 if (v.startsWith('http://') || v.startsWith('https://') || v.startsWith('//')) {
                 imgUrl = v;
               } else {
-                imgUrl = `${API || ''}${v}`;
+                imgUrl = `${API}${v}`;
               }
             }
             setImg(imgUrl);

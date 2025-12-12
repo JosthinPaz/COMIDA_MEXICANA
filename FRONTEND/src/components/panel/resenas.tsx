@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import ModalResena from "./ModalResena";
+import { API } from "../../config/api";
 import { useToast } from "../../contexts/useToastContext";
 import ConfirmModal from "../ConfirmModal";
 
@@ -44,14 +45,14 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
   // Cargar reseñas según el rol
   useEffect(() => {
     if (esVendedor && vendedorId) {
-      fetch(`/api/resenas/vendedor/${vendedorId}`)
+      fetch(`${API}/resenas/vendedor/${vendedorId}`)
         .then(res => res.json())
         .then(data => {
           setResenas(data);
           setFilteredResenas(data);
         });
     } else if (!esVendedor && productoId) {
-      fetch(`/api/resenas/producto/${productoId}`)
+      fetch(`${API}/resenas/producto/${productoId}`)
         .then(res => res.json())
         .then(data => {
           setResenas(data);
@@ -103,7 +104,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
   // Solo para cliente: verificar si puede dejar reseña
   useEffect(() => {
     if (!esVendedor && productoId) {
-      fetch(`/api/resenas/puede-resenar?producto_id=${productoId}&cliente_id=${userId}`)
+      fetch(`${API}/resenas/puede-resenar?producto_id=${productoId}&cliente_id=${userId}`)
         .then(res => res.json())
         .then(data => setPuedeResenar(data));
     }
@@ -113,7 +114,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
   const handleRespuesta = async (e: React.FormEvent, resenaId: number) => {
     e.preventDefault();
     try {
-      const res = await fetch(`/api/resenas/${resenaId}/respuesta`, {
+      const res = await fetch(`${API}/resenas/${resenaId}/respuesta`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ respuesta }),
@@ -125,7 +126,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
       setRespuesta("");
       setSelectedRespuestaResena(null);
       if (esVendedor && vendedorId) {
-        fetch(`/api/resenas/vendedor/${vendedorId}`)
+        fetch(`${API}/resenas/vendedor/${vendedorId}`)
           .then(res => res.json())
           .then(data => setResenas(data));
       }
@@ -141,7 +142,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
   const confirmDeleteRespuesta = async () => {
     if (deleteConfirmRespuesta === null) return;
     try {
-      const res = await fetch(`/api/resenas/${deleteConfirmRespuesta}/respuesta`, {
+      const res = await fetch(`${API}/resenas/${deleteConfirmRespuesta}/respuesta`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -150,7 +151,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
       }
       showToast("Respuesta eliminada correctamente", "success");
       if (esVendedor && vendedorId) {
-        fetch(`/api/resenas/vendedor/${vendedorId}`)
+        fetch(`${API}/resenas/vendedor/${vendedorId}`)
           .then(res => res.json())
           .then(data => setResenas(data));
       }
@@ -175,7 +176,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
   const confirmDeleteResena = async () => {
     if (deleteConfirmResena === null) return;
     try {
-      const res = await fetch(`/api/resenas/${deleteConfirmResena}`, {
+      const res = await fetch(`${API}/resenas/${deleteConfirmResena}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -184,7 +185,7 @@ const ResenasPanel: React.FC<Props> = ({ esVendedor, vendedorId, productoId, onR
       }
       showToast("Reseña eliminada correctamente", "success");
       if (productoId) {
-        fetch(`/api/resenas/producto/${productoId}`)
+        fetch(`${API}/resenas/producto/${productoId}`)
           .then(res => res.json())
           .then(data => setResenas(data));
         setPuedeResenar(true);

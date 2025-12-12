@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import '../../assets/css/pedido-timeline.css';
 import { useToast } from '../../contexts/useToastContext';
 import axios from 'axios';
+import { API } from '../../config/api';
 
 interface PedidoTimelineProps {
   pedidoId: number;
@@ -61,7 +62,7 @@ const PedidoTimeline: React.FC<PedidoTimelineProps> = ({
 
     setIsUpdating(true);
     try {
-      await axios.put(`http://localhost:8000/pedidos/${pedidoId}`, {
+      await axios.put(`${API}/pedidos/${pedidoId}`, {
         estado: nuevoEstado,
       });
       onStatusChange(nuevoEstado);

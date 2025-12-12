@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import NavBar from "../../components/NavBar";
 import "../../assets/css/categorias.css";
 import { useToast } from "../../contexts/useToastContext";
+import { API } from "../../config/api";
 
 type ProductoCard = {
   id: number;
@@ -19,7 +20,6 @@ const Seguridad: React.FC = () => {
   useEffect(() => {
     async function fetchProductos() {
       try {
-        const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
         const res = await fetch(`${API}/productos/categoria/seguridad/rich`);
         if (!res.ok) throw new Error("Error al obtener productos");
         const data = await res.json();

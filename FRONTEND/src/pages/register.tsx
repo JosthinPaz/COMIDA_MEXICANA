@@ -108,7 +108,8 @@ const Registro: React.FC = () => {
       const preguntaToSend = extra.seguridad_pregunta === 'Otro' ? extra.customQuestion : extra.seguridad_pregunta;
       const respuestaToSend = String(extra.seguridad_respuesta).trim();
 
-      const res = await fetch("http://localhost:8000/usuarios/register", {
+      const { API } = await import('../config/api');
+      const res = await fetch(`${API}/usuarios/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

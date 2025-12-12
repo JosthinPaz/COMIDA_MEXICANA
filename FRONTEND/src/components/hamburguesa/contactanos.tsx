@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import "../../assets/css/contactanos.css";
 import { FaBars } from "react-icons/fa";
 import "font-awesome/css/font-awesome.min.css";
-
-const API_BASE = (import.meta.env && (import.meta.env.VITE_API_URL as string)) || "http://localhost:8000";
+import { API as API_BASE } from '../../config/api';
 
 const Contactanos: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);

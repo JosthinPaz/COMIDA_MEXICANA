@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API } from "../../config/api";
 
 interface ModalResenaProps {
   productoId: number;
@@ -44,7 +45,7 @@ const ModalResena: React.FC<ModalResenaProps> = ({
       let res;
       if (resenaAEditar) {
         // Editar reseña existente
-        res = await fetch(`/api/resenas/${resenaAEditar.id}`, {
+        res = await fetch(`${API}/resenas/${resenaAEditar.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -54,7 +55,7 @@ const ModalResena: React.FC<ModalResenaProps> = ({
         });
       } else {
         // Crear nueva reseña
-        res = await fetch("/api/resenas/", {
+        res = await fetch(`${API}/resenas/`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -58,8 +59,8 @@ const Inventario: React.FC = () => {
     const fetchData = async () => {
       try {
         const [invRes, prodRes] = await Promise.all([
-          axios.get<Inventario[]>("http://localhost:8000/inventarios"),
-          axios.get<Producto[]>("http://localhost:8000/productos"),
+          axios.get<Inventario[]>(`${API}/inventarios`),
+          axios.get<Producto[]>(`${API}/productos`),
         ]);
         setInventarios(invRes.data);
         setFilteredInventarios(invRes.data);
@@ -131,7 +132,7 @@ const Inventario: React.FC = () => {
     try {
       if (editInventario) {
         const res = await axios.put<Inventario>(
-          `http://localhost:8000/inventarios/${editInventario.id}`,
+          `${API}/inventarios/${editInventario.id}`,
           { producto_id: productoId, cantidad, stock_minimo: stockMinimo }
         );
         setInventarios(
@@ -139,7 +140,7 @@ const Inventario: React.FC = () => {
         );
       } else {
         const res = await axios.post<Inventario>(
-          "http://localhost:8000/inventarios",
+          `${API}/inventarios`,
           { producto_id: productoId, cantidad, stock_minimo: stockMinimo }
         );
         setInventarios([...inventarios, res.data]);
@@ -157,7 +158,7 @@ const Inventario: React.FC = () => {
   const confirmDeleteInventario = async () => {
     if (deleteConfirm === null) return;
     try {
-      await axios.delete(`http://localhost:8000/inventarios/${deleteConfirm}`);
+      await axios.delete(`${API}/inventarios/${deleteConfirm}`);
       setInventarios(inventarios.filter((i) => i.id !== deleteConfirm));
       showToast("Registro de inventario eliminado correctamente", "success");
     } catch (err) {

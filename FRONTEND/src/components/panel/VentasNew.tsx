@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import { Bar } from "react-chartjs-2";
 import { Chart, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
 import jsPDF from "jspdf";
@@ -35,7 +36,7 @@ const Ventas: React.FC = () => {
       if (type === "anio") {
         // Consultar cada mes del año
         const promesas = MESES.map((_, index) => 
-          axios.get(`http://localhost:8000/ventas?anio=${anio}&mes=${index + 1}`)
+          axios.get(`${API}/ventas?anio=${anio}&mes=${index + 1}`)
             .then(res => {
               const data = (res.data as any[])[0] as { TotalVentasMensuales?: number };
               return {
@@ -71,7 +72,7 @@ const Ventas: React.FC = () => {
       } else if (type === "mes") {
         // Consultar un mes específico (días)
         const params = `?anio=${anio}&mes=${mes}`;
-        const res = await axios.get(`http://localhost:8000/ventas${params}`);
+        const res = await axios.get(`${API}/ventas${params}`);
         const data = (res.data as any[])[0] as { TotalVentasMensuales?: number };
         setVentasData([{
           mes: mes || 1,
@@ -82,7 +83,7 @@ const Ventas: React.FC = () => {
       } else {
         // Consultar un día específico
         const params = `?anio=${anio}${mes ? `&mes=${mes}` : ''}${dia ? `&dia=${dia}` : ''}`;
-        const res = await axios.get(`http://localhost:8000/ventas${params}`);
+        const res = await axios.get(`${API}/ventas${params}`);
         const data = (res.data as any[])[0] as { TotalVentasDiarias?: number };
         setVentasData([{
           mes: 1,

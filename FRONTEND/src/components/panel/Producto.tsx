@@ -6,6 +6,7 @@ import autoTable from "jspdf-autotable";
 import "../../assets/css/panel.css";
 import { useToast } from "../../contexts/useToastContext";
 import ConfirmModal from "../ConfirmModal";
+import { API } from '../../config/api';
 
 // ===================
 // Modelo Producto
@@ -51,7 +52,6 @@ const Productos: React.FC = () => {
   const [filterCategoriaId, setFilterCategoriaId] = useState<number | "">("");
 
   useEffect(() => {
-    const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
     const fetchData = async () => {
       try {
         const [prodRes, catRes] = await Promise.all([

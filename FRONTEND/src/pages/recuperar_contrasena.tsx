@@ -21,8 +21,9 @@ const RecuperarContrasena: React.FC = () => {
     setLoading(true);
 
     try {
+      const { API } = await import('../config/api');
       const response = await fetch(
-        "http://localhost:8000/usuarios/recuperar-contrasena",
+        `${API}/usuarios/recuperar-contrasena`,
         {
           method: "POST",
           headers: {

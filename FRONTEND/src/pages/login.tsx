@@ -24,13 +24,14 @@ const Login: React.FC = () => {
     if (!reactivateConfirm.data) return;
     
     try {
-      const reactiva = await fetch(`http://localhost:8000/usuarios/${reactivateConfirm.data.id_usuario}/activar`, {
+      const { API } = await import('../config/api');
+      const reactiva = await fetch(`${API}/usuarios/${reactivateConfirm.data.id_usuario}/activar`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" }
       });
       
       if (reactiva.ok) {
-        const res2 = await fetch("http://localhost:8000/usuarios/login", {
+        const res2 = await fetch(`${API}/usuarios/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ correo, contraseña }), 
@@ -80,7 +81,8 @@ const Login: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch("http://localhost:8000/usuarios/login", {
+      const { API } = await import('../config/api');
+      const res = await fetch(`${API}/usuarios/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo, contraseña }), 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { API } from "../config/api";
 import "../assets/css/carrito.css";
 import NavBar from "../components/NavBar";
 import "font-awesome/css/font-awesome.min.css";
@@ -111,9 +112,7 @@ const Carrito: React.FC = () => {
   useEffect(() => {
     async function fetchMetodoPago() {
       if (!usuarioId) return;
-      const res = await fetch(
-        `http://localhost:8000/usuarios/${usuarioId}/metodo-pago`
-      );
+      const res = await fetch(`${API}/usuarios/${usuarioId}/metodo-pago`);
       if (res.ok) {
         const metodo = await res.json();
         setMetodoPago(metodo);
@@ -124,7 +123,7 @@ const Carrito: React.FC = () => {
     async function fetchUsuario() {
       if (!usuarioId) return;
       try {
-        const r = await fetch(`http://localhost:8000/usuarios/${usuarioId}`);
+        const r = await fetch(`${API}/usuarios/${usuarioId}`);
         if (!r.ok) return;
         const usuario = await r.json();
         if (usuario && usuario.seguridad_pregunta) {
@@ -192,7 +191,7 @@ const Carrito: React.FC = () => {
         return;
       }
       try {
-        const vr = await fetch(`http://localhost:8000/usuarios/${cliente_id}/verificar-seguridad`, {
+        const vr = await fetch(`${API}/usuarios/${cliente_id}/verificar-seguridad`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // Enviar la respuesta en texto plano (sin cifrar) para que el backend la compare con el hash bcrypt
@@ -233,7 +232,7 @@ const Carrito: React.FC = () => {
     let loadingId: string = "";
     try {
       loadingId = showLoading("Procesando compra...");
-      await fetch("http://localhost:8000/pagos/", {
+      await fetch(`${API}/pagos/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -245,7 +244,7 @@ const Carrito: React.FC = () => {
         }),
       });
 
-      const res = await fetch("http://localhost:8000/compra", {
+      const res = await fetch(`${API}/compra`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -333,7 +332,7 @@ const Carrito: React.FC = () => {
     // Si el usuario marcó guardar y se indicó enviar al backend, lo hacemos
     if (sendToBackend && userId) {
       try {
-        await fetch("http://localhost:8000/pagos", {
+        await fetch(`${API}/pagos`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -350,7 +349,7 @@ const Carrito: React.FC = () => {
           }),
         });
         // Refrescar método guardado desde backend
-        const res = await fetch(`http://localhost:8000/usuarios/${userId}/metodo-pago`);
+        const res = await fetch(`${API}/usuarios/${userId}/metodo-pago`);
         if (res.ok) {
           const metodo = await res.json();
           setMetodoPago(metodo);
@@ -419,7 +418,7 @@ const Carrito: React.FC = () => {
         return;
       }
       try {
-        const vr = await fetch(`http://localhost:8000/usuarios/${cliente_id}/verificar-seguridad`, {
+        const vr = await fetch(`${API}/usuarios/${cliente_id}/verificar-seguridad`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // Enviar la respuesta en texto plano (sin cifrar)
@@ -444,7 +443,7 @@ const Carrito: React.FC = () => {
       loadingId = showLoading("Procesando compra...");
       // Si existe un método guardado en el backend, usamos 1-clic y no volvemos a enviar datos sensibles
       if (metodoPago) {
-        const res = await fetch("http://localhost:8000/compra", {
+        const res = await fetch(`${API}/compra`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

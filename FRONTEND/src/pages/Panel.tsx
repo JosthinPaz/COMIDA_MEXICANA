@@ -14,6 +14,7 @@ import {
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import "../assets/css/panel.css";
+import { API } from '../config/api';
 import Categorias from "../components/panel/Categorias";
 import Productos from "../components/panel/Producto";
 import Inventario from "../components/panel/Inventario";
@@ -79,7 +80,7 @@ const Panel: React.FC = () => {
 
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/resenas/comprados/${userId}`)
+    fetch(`${API}/resenas/comprados/${userId}`)
       .then(res => res.json())
       .then(data => setProductosComprados(data));
   }, [userId]);
@@ -91,14 +92,14 @@ const Panel: React.FC = () => {
       try {
         // prefer backend canonical URL
         if (!userId) return;
-        const res = await fetch(`http://localhost:8000/usuarios/${userId}`);
+        const res = await fetch(`${API}/usuarios/${userId}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!mounted) return;
         if (data.foto_perfil && data.foto_perfil.length > 0) {
           const foto = data.foto_perfil[data.foto_perfil.length - 1];
           const raw = foto.url || '';
-          const full = raw.startsWith('http') ? raw : `http://localhost:8000${raw}`;
+          const full = raw.startsWith('http') ? raw : `${API}${raw}`;
           setAvatarUrl(full);
           try { localStorage.setItem('userAvatar', full); } catch(e) {}
         }

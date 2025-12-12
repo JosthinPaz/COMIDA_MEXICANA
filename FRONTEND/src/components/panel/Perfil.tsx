@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 // Iconos de lucide-react
 import { Edit2, Save, X, Eye, EyeOff, XCircle } from "lucide-react";
 import '../../assets/css/Perfil.css';
@@ -55,7 +56,7 @@ const Perfil: React.FC = () => {
 
     // Petición al backend para obtener los datos del usuario
     axios
-      .get<Usuario>(`http://localhost:8000/usuarios/${userId}`)
+      .get<Usuario>(`${API}/usuarios/${userId}`)
       .then((res) => {
         // Guardamos el usuario en el estado
         setUser(res.data);
@@ -80,7 +81,7 @@ const Perfil: React.FC = () => {
     if (!userId) return;
 
     axios
-      .get<Usuario>(`http://localhost:8000/usuarios/${userId}`)
+      .get<Usuario>(`${API}/usuarios/${userId}`)
       .then((res) => {
         // Buscar si hay una foto de perfil en los videos
         if (res.data.foto_perfil && res.data.foto_perfil.length > 0) {
@@ -138,14 +139,14 @@ const Perfil: React.FC = () => {
       formData.append('file', profileImageFile);
 
       const response = await axios.post<{ success: boolean; message: string; url: string }>(
-        `http://localhost:8000/usuarios/${user.id_usuario}/upload-perfil`,
+        `${API}/usuarios/${user.id_usuario}/upload-perfil`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       );
 
       // Normalize to absolute URL (backend serves at http://localhost:8000)
       const rawUrl = response.data.url || '';
-      const fullUrl = rawUrl.startsWith('http') ? rawUrl : `http://localhost:8000${rawUrl}`;
+      const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${API}${rawUrl}`;
       setFotoPerfilUrl(fullUrl);
       // persist avatar URL so other parts of the app can use it
       try {
@@ -190,7 +191,7 @@ const Perfil: React.FC = () => {
     }
     try {
       // PUT al backend con los datos actualizados
-      await axios.put(`http://localhost:8000/usuarios/${user?.id_usuario}`, form);
+      await axios.put(`${API}/usuarios/${user?.id_usuario}`, form);
 
       // Salimos de modo edición
       setEditMode(false);
@@ -198,7 +199,7 @@ const Perfil: React.FC = () => {
       showToast('Perfil actualizado correctamente.', 'success');
 
       // Refrescamos los datos del usuario para mostrar lo más nuevo
-      const res = await axios.get<Usuario>(`http://localhost:8000/usuarios/${user?.id_usuario}`);
+      const res = await axios.get<Usuario>(`${API}/usuarios/${user?.id_usuario}`);
       setUser(res.data);
     } catch {
       // Mostramos alerta de error si falla la actualización
@@ -220,7 +221,7 @@ const Perfil: React.FC = () => {
   const finalizeDeactivate = async () => {
     if (!user) return;
     try {
-      await axios.put(`http://localhost:8000/usuarios/${user.id_usuario}/desactivar`);
+      await axios.put(`${API}/usuarios/${user.id_usuario}/desactivar`);
       localStorage.clear();
       showToast('Cuenta desactivada correctamente. ¡Esperamos verte pronto de vuelta!', 'success');
       setTimeout(() => {

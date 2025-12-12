@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from 'exceljs';
 import { useToast } from "../../contexts/useToastContext";
+import { API } from '../../config/api';
 
 interface ReportRow {
   producto_id: number;
@@ -25,7 +26,7 @@ const SalesReportModal: React.FC<Props> = ({ onClose, date }) => {
   useEffect(() => {
     const fetchReport = async () => {
       try {
-        const url = `http://localhost:8000/ventas/daily_report${date ? `?date=${date}` : ""}`;
+        const url = `${API}/ventas/daily_report${date ? `?date=${date}` : ""}`;
         const res = await axios.get<ReportRow[]>(url);
         setRows(res.data);
       } catch (err) {

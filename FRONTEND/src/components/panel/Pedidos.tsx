@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import { motion } from "framer-motion";
 import '../../assets/css/pedido.css';
 import '../../assets/css/pedido-timeline.css';
@@ -18,10 +19,10 @@ interface Pedido {
 function getPedidosUrl(userId: string | null) {
   // Solo el usuario con id 1 es vendedor y ve todos los pedidos
   if (userId === "1") {
-    return "http://localhost:8000/pedidos/";
+    return `${API}/pedidos/`;
   }
   // Todos los demás (clientes) solo ven sus propios pedidos
-  return `http://localhost:8000/pedidos/cliente/${userId}`;
+  return `${API}/pedidos/cliente/${userId}`;
 }
 
 interface PedidosProps {
@@ -130,7 +131,7 @@ const Pedidos: React.FC<PedidosProps> = ({ setSelectedPedidoId }) => {
   const confirmDelete = async () => {
     if (deleteConfirm === null) return;
     try {
-      await axios.delete(`http://localhost:8000/pedidos/${deleteConfirm}`);
+      await axios.delete(`${API}/pedidos/${deleteConfirm}`);
       setPedidos(pedidos.filter((p) => p.id_pedido !== deleteConfirm));
       showToast("Pedido eliminado correctamente", "success");
     } catch (err) {

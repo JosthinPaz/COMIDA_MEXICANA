@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useToast } from '../../contexts/useToastContext'
 import { useNavigate } from 'react-router-dom'
+import { API } from '../../config/api'
 
 type Message = { from: 'user'|'bot', text: string }
 
@@ -36,7 +37,6 @@ export default function ChatBot(){
     setLoading(true)
 
     try{
-      const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
       const token = localStorage.getItem('token') || ''
       // Try to recover userId from token payload if it's missing in localStorage
       let userId = Number(localStorage.getItem('userId')) || null

@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "../../assets/css/panel.css";
 import { useToast } from "../../contexts/useToastContext";
+import { API } from "../../config/api";
 import ConfirmModal from "../ConfirmModal";
 
 // Modelo Categoría
@@ -32,7 +33,6 @@ const Categorias: React.FC = () => {
   const [filterEstado, setFilterEstado] = useState<boolean | "">("");
 
   useEffect(() => {
-    const API = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '');
     const fetchCategorias = async () => {
       try {
         const res = await axios.get<Categoria[]>(`${API}/categorias`);

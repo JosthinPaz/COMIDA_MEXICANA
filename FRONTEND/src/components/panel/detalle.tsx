@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API } from '../../config/api';
 import "../../assets/css/pedido.css";
 import { useToast } from "../../contexts/useToastContext";
 import ConfirmModal from "../ConfirmModal";
@@ -37,7 +38,7 @@ const Detalle: React.FC<Props> = ({ pedidoId, onBack }) => {
   useEffect(() => {
     setLoading(true);
     axios
-      .get<DetallePedido[]>(`http://localhost:8000/detalles_pedido/pedido/${pedidoId}`)
+      .get<DetallePedido[]>(`${API}/detalles_pedido/pedido/${pedidoId}`)
       .then((res) => {
         setDetalles(res.data);
         setLoading(false);
@@ -47,7 +48,7 @@ const Detalle: React.FC<Props> = ({ pedidoId, onBack }) => {
         setLoading(false);
       });
     // fetch basic pedido info (fecha, total, cliente)
-    axios.get(`http://localhost:8000/pedidos/${pedidoId}`)
+    axios.get(`${API}/pedidos/${pedidoId}`)
       .then(r => setPedidoInfo(r.data))
       .catch(() => setPedidoInfo(null));
   }, [pedidoId]);
@@ -60,12 +61,12 @@ const Detalle: React.FC<Props> = ({ pedidoId, onBack }) => {
     e.preventDefault();
     try {
       if (editId) {
-        await axios.put(`http://localhost:8000/detalles_pedido/${editId}`, form);
+        await axios.put(`${API}/detalles_pedido/${editId}`, form);
       } else {
-        await axios.post(`http://localhost:8000/detalles_pedido/`, { ...form, id_pedido: pedidoId });
+        await axios.post(`${API}/detalles_pedido/`, { ...form, id_pedido: pedidoId });
       }
       // Refresca la lista
-      const res = await axios.get<DetallePedido[]>(`http://localhost:8000/detalles_pedido/pedido/${pedidoId}`);
+      const res = await axios.get<DetallePedido[]>(`${API}/detalles_pedido/pedido/${pedidoId}`);
       setDetalles(res.data);
       setForm({});
       setEditId(null);
@@ -86,7 +87,7 @@ const Detalle: React.FC<Props> = ({ pedidoId, onBack }) => {
   const confirmDelete = async () => {
     if (deleteConfirm === null) return;
     try {
-      await axios.delete(`http://localhost:8000/detalles_pedido/${deleteConfirm}`);
+      await axios.delete(`${API}/detalles_pedido/${deleteConfirm}`);
       setDetalles(detalles.filter((d) => d.id_detalle !== deleteConfirm));
       showToast("Detalle eliminado correctamente", "success");
     } catch {
