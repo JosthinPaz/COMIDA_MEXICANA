@@ -7,14 +7,6 @@ import re
 import urllib.parse
 from dotenv import load_dotenv  # Para cargar variables de entorno
 
-# --- Importaciones NECESARIAS para la Creación de Tablas (TEMPORAL) ---
-# Importamos los componentes de la DB y TODOS los modelos
-# para que Base.metadata.create_all() sepa qué tablas crear.
-from db.database import engine # Asume que 'engine' está aquí
-from db import Base # Asume que 'Base' está aquí
-from models import Categoria, Producto , Item ,Usuario ,Rol , Inventario, Pedido, DetallePedido ,Video, Notificacion,Chat,Reseña ,Pago
-# ------------------------------------------------------------------------
-
 # --- Importación de todos los enrutadores (routers) del proyecto ---
 from controllers.categoria_controller import router as categoria_router
 from controllers.chat_controller import router as chat_router
@@ -39,17 +31,6 @@ app = FastAPI()
 # Cargar variables de entorno
 load_dotenv()
 
-# --- LÓGICA TEMPORAL PARA CREAR TABLAS DIRECTAMENTE ---
-try:
-    print("TEMPORAL: Intentando crear todas las tablas directamente...")
-    # Base.metadata conoce todos los modelos importados arriba y los crea en la DB.
-    Base.metadata.create_all(bind=engine)
-    print("TEMPORAL: Tablas creadas (si no existían).")
-except Exception as e:
-    print(f"TEMPORAL: Falló la creación de tablas con create_all: {e}")
-# ------------------------------------------------------
-
-
 # Asegurarse de que la carpeta 'static' y 'static/uploads' existan antes de montar
 base_dir = os.path.abspath(os.path.dirname(__file__))
 static_dir = os.path.join(base_dir, 'static')
@@ -59,7 +40,7 @@ os.makedirs(uploads_dir, exist_ok=True)
 # Middleware to sanitize incoming static paths to avoid invalid Windows filenames
 @app.middleware("http")
 async def sanitize_static_path(request, call_next):
-    # ... (El código de middleware de path es el mismo)
+    # ... (El código de middleware de path es el mismo que tenías)
     try:
         path = request.scope.get('path', '')
         # Only operate on static paths
@@ -90,6 +71,7 @@ async def sanitize_static_path(request, call_next):
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # --- Configuración del middleware de CORS (SEGURIDAD) ---
+# allowed_origins debe incluir la URL de tu Frontend de Railway
 allowed_origins_str = os.getenv(
     "ALLOWED_ORIGINS",  
     "http://localhost:5173,http://localhost:3000"
