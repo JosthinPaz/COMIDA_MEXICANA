@@ -3,19 +3,28 @@ import React, { useState } from "react";
 import "./App.css";
 import "font-awesome/css/font-awesome.min.css";
 import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+
+// Obtener el path base dinámicamente
+const getBasePath = () => {
+  const isDev = import.meta.env.DEV;
+  return isDev ? "/" : "/JOSNISHOP_000/";
+};
+
+const basePath = getBasePath();
 
 // Componente principal de la página de videos y productos
 const VideosPage: React.FC = () => {
   // Lista de videos a mostrar
   const videos = [
-    "/JOSNISHOP_000/assets/videos/app_intefaz/reloj_1.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/cafetera.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/bolso.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/perro.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/audifonos_1.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/lienzo.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/audifonos_2.mp4",
-    "/JOSNISHOP_000/assets/videos/app_intefaz/set.mp4",
+    `${basePath}assets/videos/app_intefaz/reloj_1.mp4`,
+    `${basePath}assets/videos/app_intefaz/cafetera.mp4`,
+    `${basePath}assets/videos/app_intefaz/bolso.mp4`,
+    `${basePath}assets/videos/app_intefaz/perro.mp4`,
+    `${basePath}assets/videos/app_intefaz/audifonos_1.mp4`,
+    `${basePath}assets/videos/app_intefaz/lienzo.mp4`,
+    `${basePath}assets/videos/app_intefaz/audifonos_2.mp4`,
+    `${basePath}assets/videos/app_intefaz/set.mp4`,
   ];
 
   // Lista de productos destacados
@@ -23,7 +32,7 @@ const VideosPage: React.FC = () => {
     {
       nombre: "Fitness Tracker, Reloj de Actividad",
       precio: "$69.990 COP",
-      imagen: "/JOSNISHOP_000/assets/IMG/Index/reloj.png",
+      imagen: `${basePath}assets/IMG/Index/reloj.png`,
       descripcion: "Reloj inteligente para monitorear actividad física.",
       cantidad: 1, 
     },
