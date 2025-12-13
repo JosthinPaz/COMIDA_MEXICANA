@@ -48,7 +48,7 @@ import { ToastProvider } from "./contexts/ToastContext";
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ToastProvider>
-      <BrowserRouter basename="/JOSNISHOP_000">
+      <BrowserRouter basename={import.meta.env.PROD ? "/JOSNISHOP_000" : "/"}>
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/login" element={<Login />} />
