@@ -6,6 +6,7 @@ const API_TARGET = process.env.VITE_API_URL || 'http://localhost:8000';
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/JOSNISHOP_000/',
   plugins: [react()],
   server: {
     proxy: {
