@@ -1,27 +1,31 @@
 # --- Etapa 1: Constructor (Builder) ---
 FROM python:3.11-slim-bullseye AS builder
 
-# Evitar que Python genere archivos .pyc y permitir logs en tiempo real
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para compilar
+# 1. Instalamos dependencias para añadir repositorios y el conector actualizado
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg2 \
         gcc \
         pkg-config \
         build-essential \
-        default-libmysqlclient-dev \
-        libcairo2-dev \
-        libfreetype6-dev \
         libssl-dev \
-        python3-dev && \
+        python3-dev \
+        libcairo2-dev \
+        libfreetype6-dev
+
+# 2. AÑADIR REPOSITORIO OFICIAL DE MARIADB para obtener libmariadb-dev >= 3.3.1
+RUN curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --mariadb-server-version="mariadb-10.11" && \
+    apt-get update && \
+    apt-get install -y libmariadb-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Instalamos dependencias de Python en una capa separada
-# Esto solo se ejecutará si cambias el archivo requirements.txt
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir wheel && \
@@ -33,24 +37,20 @@ FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 
-# Instalar SOLO las librerías de ejecución (runtime) necesarias
-RUN apt-get update && \
+# Repetimos la configuración del repositorio para tener la librería de ejecución correcta
+RUN apt-get update && apt-get install -y curl ca-certificates && \
+    curl -LsS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | bash -s -- --mariadb-server-version="mariadb-10.11" && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
+        libmariadb3 \
         libmagic1 \
-        default-libmysqlclient-dev \
         libcairo2 \
-        libfreetype6 \
-        ca-certificates && \
+        libfreetype6 && \
     rm -rf /var/lib/apt/lists/*
 
-# Copiar las librerías instaladas desde la etapa de builder
 COPY --from=builder /install /usr/local
-
-# Copiar el código de la aplicación
 COPY . .
 
-# Exponer el puerto de FastAPI/Uvicorn
 EXPOSE 8000
 
-# Script de inicio robusto
 CMD ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"]
