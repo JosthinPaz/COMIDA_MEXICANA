@@ -1,5 +1,5 @@
 # --- Etapa 1: Constructor (Builder) ---
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bullseye AS builder
 
 # Evitar que Python genere archivos .pyc y permitir logs en tiempo real
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -29,7 +29,7 @@ RUN pip install --upgrade pip && \
 
 
 # --- Etapa 2: Producción (Final) ---
-FROM python:3.11-slim
+FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 
